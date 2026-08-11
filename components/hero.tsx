@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Crown, Sparkles } from "lucide-react";
 import { SearchPanel } from "./search-panel";
 import { GlobeFilterToggle, type GlobeFilter } from "./globe-filter";
@@ -9,7 +9,7 @@ import { DestinationOverlay } from "./destination-overlay";
 import TravelGlobe from "./travel-globe";
 import type { Destination } from "@/lib/destinations";
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
   show: (i: number) => ({
     opacity: 1,
