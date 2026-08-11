@@ -1,26 +1,184 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #fafafa;
+
+  --card: #101014;
+  --card-foreground: #fafafa;
+
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --ring: #10b981;
+
+  --primary: #10b981;
+  --primary-foreground: #04120c;
+
+  --accent-cyan: #22d3ee;
+  --accent-gold: #f5c451;
+
+  --radius: 1rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-cyan: var(--accent-cyan);
+  --color-gold: var(--accent-gold);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif-display);
+
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.5rem);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient glow background */
+.bg-aurora {
+  background-image:
+    radial-gradient(60% 55% at 15% 10%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(50% 50% at 90% 20%, rgba(34, 211, 238, 0.12), transparent 60%),
+    radial-gradient(45% 55% at 70% 90%, rgba(16, 185, 129, 0.1), transparent 60%);
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(18, 18, 22, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+.glass-strong {
+  background: rgba(12, 12, 16, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Glow utilities */
+.glow-emerald {
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 0 32px -6px rgba(16, 185, 129, 0.55);
+}
+.glow-cyan {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 0 32px -6px rgba(34, 211, 238, 0.5);
+}
+.glow-gold {
+  box-shadow: 0 0 0 1px rgba(245, 196, 81, 0.4), 0 0 28px -6px rgba(245, 196, 81, 0.55);
+}
+.text-glow-emerald {
+  text-shadow: 0 0 24px rgba(16, 185, 129, 0.55);
+}
+
+/* Globe HTML pins (rendered as raw DOM by react-globe.gl) */
+.globe-pin {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+.globe-pin__dot {
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+}
+.globe-pin__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  opacity: 0.9;
+}
+.globe-pin--visited .globe-pin__dot {
+  background: #f5c451;
+  box-shadow: 0 0 12px 2px rgba(245, 196, 81, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.globe-pin--visited .globe-pin__ring {
+  border: 1px solid rgba(245, 196, 81, 0.6);
+}
+.globe-pin--visited svg {
+  width: 9px;
+  height: 9px;
+  color: #04120c;
+}
+.globe-pin--target .globe-pin__dot {
+  background: #10b981;
+  box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.85);
+}
+.globe-pin--target .globe-pin__ring {
+  border: 1px solid rgba(16, 185, 129, 0.7);
+  animation: pin-pulse 1.8s ease-out infinite;
+}
+.globe-pin__label {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: #fafafa;
+  background: rgba(9, 9, 11, 0.7);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+.globe-pin:hover .globe-pin__label {
+  opacity: 1;
+}
+
+@keyframes pin-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
 }
