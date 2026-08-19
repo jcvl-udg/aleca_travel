@@ -22,7 +22,7 @@ export function SiteNav() {
     >
       <nav className="glass mx-auto flex max-w-6xl items-center justify-between rounded-full py-2.5 pl-5 pr-2.5">
         <a href="#" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground glow-emerald">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground glow-primary">
             <Compass className="h-4 w-4" aria-hidden="true" />
           </span>
           <span className="font-serif text-lg tracking-tight">Aleca Travel</span>
@@ -33,7 +33,7 @@ export function SiteNav() {
             <a
               key={link.label}
               href={link.href}
-              className="rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-full px-4 py-2 text-sm text-zinc-200 transition-colors hover:bg-white/5 hover:text-white"
             >
               {link.label}
             </a>
@@ -51,7 +51,7 @@ export function SiteNav() {
               <span className="text-muted-foreground">pts</span>
             </span>
             <span
-              className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-xs font-semibold text-primary-foreground"
+              className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-sky-500 text-xs font-semibold text-primary-foreground"
               aria-hidden="true"
             >
               AV
@@ -78,7 +78,7 @@ export function SiteNav() {
                 key={link.label}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-2xl px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-2xl px-4 py-3 text-sm text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
               >
                 {link.label}
               </a>

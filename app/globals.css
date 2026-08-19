@@ -8,13 +8,14 @@
   --card-foreground: #fafafa;
 
   --muted: #18181b;
-  --muted-foreground: #a1a1aa;
+  --muted-foreground: #cbd5e1;
 
   --border: rgba(255, 255, 255, 0.08);
-  --ring: #10b981;
 
-  --primary: #10b981;
-  --primary-foreground: #04120c;
+  /* PALETA CENTRALIZADA (Cyan / Sky Blue) */
+  --ring: #1dbbf4;
+  --primary: #1dbbf4;
+  --primary-foreground: #09090b; /* Ajustado a negro neutro para mejor contraste */
 
   --accent-cyan: #22d3ee;
   --accent-gold: #f5c451;
@@ -55,44 +56,50 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient glow background */
+/* Ambient glow background (Actualizado de Esmeralda a Cyan) */
 .bg-aurora {
   background-image:
-    radial-gradient(60% 55% at 15% 10%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(60% 55% at 15% 10%, rgba(29, 187, 244, 0.16), transparent 60%),
     radial-gradient(50% 50% at 90% 20%, rgba(34, 211, 238, 0.12), transparent 60%),
-    radial-gradient(45% 55% at 70% 90%, rgba(16, 185, 129, 0.1), transparent 60%);
+    radial-gradient(45% 55% at 70% 90%, rgba(29, 187, 244, 0.10), transparent 60%);
 }
 
 /* Glassmorphism */
+/* Oscurecemos ligeramente el vidrio para dar más separación al texto sobre el globo */
 .glass {
-  background: rgba(18, 18, 22, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(9, 9, 11, 0.75); /* Pasa de 0.6 a 0.75 de opacidad */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
 }
 
 .glass-strong {
-  background: rgba(12, 12, 16, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(9, 9, 11, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Glow utilities */
-.glow-emerald {
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 0 32px -6px rgba(16, 185, 129, 0.55);
+/* Glow utilities (Ajustadas a Primary/Cyan para evitar conflictos) */
+.glow-primary,
+.glow-emerald { /* Se mantiene la clase legacy redirigida a cyan */
+  box-shadow: 0 0 0 1px rgba(29, 187, 244, 0.35), 0 0 32px -6px rgba(29, 187, 244, 0.55);
 }
+
 .glow-cyan {
   box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 0 32px -6px rgba(34, 211, 238, 0.5);
 }
+
 .glow-gold {
   box-shadow: 0 0 0 1px rgba(245, 196, 81, 0.4), 0 0 28px -6px rgba(245, 196, 81, 0.55);
 }
-.text-glow-emerald {
-  text-shadow: 0 0 24px rgba(16, 185, 129, 0.55);
+
+.text-glow-primary,
+.text-glow-emerald { /* Se mantiene la clase legacy redirigida a cyan */
+  text-shadow: 0 0 24px rgba(29, 187, 244, 0.6);
 }
 
-/* Globe HTML pins (rendered as raw DOM by react-globe.gl) */
+/* Globe HTML pins (Pines del mapa redirigidos de Verde a Cyan #1dbbf4) */
 .globe-pin {
   position: relative;
   width: 18px;
@@ -112,6 +119,8 @@ body {
   border-radius: 9999px;
   opacity: 0.9;
 }
+
+/* Destinos Visitados (Mantiene el Dorado VIP) */
 .globe-pin--visited .globe-pin__dot {
   background: #f5c451;
   box-shadow: 0 0 12px 2px rgba(245, 196, 81, 0.8);
@@ -125,14 +134,16 @@ body {
 .globe-pin--visited svg {
   width: 9px;
   height: 9px;
-  color: #04120c;
+  color: #09090b;
 }
+
+/* Próximos Destinos / Recomendados (Cambiado de #10b981 a #1dbbf4) */
 .globe-pin--target .globe-pin__dot {
-  background: #10b981;
-  box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.85);
+  background: #1dbbf4;
+  box-shadow: 0 0 12px 2px rgba(29, 187, 244, 0.85);
 }
 .globe-pin--target .globe-pin__ring {
-  border: 1px solid rgba(16, 185, 129, 0.7);
+  border: 1px solid rgba(29, 187, 244, 0.7);
   animation: pin-pulse 1.8s ease-out infinite;
 }
 .globe-pin__label {
