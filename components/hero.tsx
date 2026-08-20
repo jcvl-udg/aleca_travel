@@ -79,29 +79,51 @@ export function Hero() {
     return () => window.removeEventListener("wheel", handleWheel);
   }, [selected, isDrawerOpen]);
 
+  useEffect(() => {
+    if (!selected) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [selected]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("destination-drawer", { detail: { open: isDrawerOpen } }));
+  }, [isDrawerOpen]);
+
   return (
-    <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-background">
+    <section className={`relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-background ${
+      selected ? "fixed inset-0 z-40 h-[100dvh]" : ""
+    }`}>
       
       {/* LAYER 0: CINEMATIC BACKGROUND VIDEO */}
       <AnimatePresence>
         {selected && (
           <motion.div
-            key="video-bg"
+            key={`video-bg-${selected.id}`}
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.8 } }}
             transition={{ duration: 1.5, ease: "easeOut" }}
             className="absolute inset-0 z-0 overflow-hidden"
           >
-            <video 
+            <video
               autoPlay 
               loop 
               muted 
               playsInline
-              className="absolute inset-0 h-full w-full object-cover opacity-30 lg:opacity-50"
+              preload="metadata"
+              poster={selected.image}
+              className="absolute inset-0 h-full w-full object-cover opacity-45 lg:opacity-60"
               src="https://cdn.coverr.co/videos/coverr-drone-shot-over-a-tropical-beach-4318/1080p.mp4" 
             />
-            <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-background via-background/80 lg:via-background/80 to-transparent z-10" />
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-background/65 via-background/30 to-transparent lg:bg-gradient-to-r lg:from-background/65 lg:via-background/30 lg:to-transparent" />
             <motion.div 
               initial={{ opacity: 0.8 }}
               animate={{ opacity: 0 }}
@@ -119,11 +141,12 @@ export function Hero() {
         // Added 'overflow-hidden' to the parent section to stop scrolling.
         className={`absolute inset-0 z-10 flex items-center justify-center transition-all duration-1000 ease-in-out lg:inset-y-0 lg:left-auto lg:right-0 ${
           selected 
-            ? "w-full translate-y-[5%] lg:w-[65%] lg:translate-y-[10%] lg:translate-x-[5%]" 
+            ? "w-full translate-y-[5%] opacity-60 lg:w-[65%] lg:translate-y-[10%] lg:translate-x-[5%]" 
             : "w-full lg:w-[60%] translate-y-[-10%] lg:translate-y-[10%]"
         }`}
       >
         <div className="pointer-events-none absolute inset-0 -z-10 bg-primary/5 blur-[120px]" />
+        {selected && <div className="pointer-events-none absolute inset-0 -z-10 bg-black/10 backdrop-blur-[1px]" />}
         {/* CHANGED: Removed arbitrary height constraints that cause overflow */}
         <div className="absolute inset-0 h-full w-full pointer-events-auto">
           <TravelGlobe 
@@ -136,7 +159,11 @@ export function Hero() {
       </motion.div>
 
       {/* LAYER 2: FOREGROUND UI OVERLAY */}
-      <div className="pointer-events-none absolute inset-0 z-20 mx-auto flex w-full max-w-7xl flex-col justify-end pb-8 lg:justify-center px-4 pt-24 lg:px-12 lg:pb-0 lg:pt-0">
+      <div className={`pointer-events-none absolute inset-0 z-20 mx-auto flex w-full max-w-7xl flex-col px-4 lg:px-12 ${
+        selected
+          ? "justify-start pt-28 sm:pt-32 lg:justify-center lg:pt-0"
+          : "justify-end pb-8 pt-24 lg:justify-center lg:pb-0 lg:pt-0"
+      }`}>
         <div className="relative flex w-full max-w-xl flex-col">
           <AnimatePresence mode="wait">
             {!selected ? (
@@ -189,13 +216,29 @@ export function Hero() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 30, scale: 0.95 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="pointer-events-auto glass relative flex w-full flex-col gap-4 lg:gap-6 rounded-[2rem] p-5 lg:p-6 border border-white/10 shadow-2xl backdrop-blur-xl bg-black/60 lg:max-w-md"
+                className="pointer-events-auto glass relative flex w-full flex-col gap-4 rounded-[1.75rem] border border-white/15 bg-black/55 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:p-5 lg:max-w-md lg:gap-5 lg:rounded-[2rem] lg:p-6"
               >
-                <button onClick={handleCloseFocus} className="absolute -top-12 left-0 flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors lg:hidden">
+                 <button onClick={handleCloseFocus} className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/60 px-4 py-2.5 text-sm text-white/80 shadow-xl backdrop-blur-xl transition-colors hover:text-white lg:hidden">
                    <ChevronLeft className="w-4 h-4" /> Volver al globo
                 </button>
 
-                <div className="grid grid-cols-2 gap-2 lg:gap-3 h-40 lg:h-56">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary lg:mb-2 lg:text-xs">
+                      <MapPin className="w-3 h-3 lg:w-4 lg:h-4" /> Destino VIP
+                    </div>
+                    <h2 className="font-serif text-3xl lg:text-4xl text-white tracking-tight">{selected.name}</h2>
+                  </div>
+                  <button
+                    onClick={() => setIsDrawerOpen(true)}
+                    className="group flex shrink-0 items-center gap-2 rounded-full bg-primary px-3.5 py-2.5 text-xs font-semibold text-primary-foreground shadow-[0_0_24px_rgba(29,187,244,0.28)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(29,187,244,0.45)] sm:px-4"
+                  >
+                    <span>Ver detalles</span>
+                    <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </button>
+                </div>
+
+                <div className="grid h-28 grid-cols-2 gap-2 lg:h-36 lg:gap-3">
                   <div className="relative col-span-1 row-span-2 overflow-hidden rounded-xl lg:rounded-2xl bg-muted/20">
                     <img src="https://images.unsplash.com/photo-1542314831-c6a4d27ce6a2?q=80&w=400&auto=format&fit=crop" alt="Luxury" className="h-full w-full object-cover opacity-80 transition-transform duration-700 hover:scale-110" />
                   </div>
@@ -206,23 +249,6 @@ export function Hero() {
                     <img src="https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=400&auto=format&fit=crop" alt="Cuisine" className="h-full w-full object-cover opacity-80 transition-transform duration-700 hover:scale-110" />
                   </div>
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-2 text-primary text-xs lg:text-sm font-medium uppercase tracking-widest mb-1 lg:mb-2">
-                    <MapPin className="w-3 h-3 lg:w-4 lg:h-4" /> Destino VIP
-                  </div>
-                  <h2 className="font-serif text-3xl lg:text-4xl text-white tracking-tight">{selected.name}</h2>
-                </div>
-
-                <button 
-                  onClick={() => setIsDrawerOpen(true)}
-                  className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-4 py-3 lg:py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(29,187,244,0.3)]"
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Ver Itinerario
-                    <ExternalLink className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-                  </span>
-                </button>
               </motion.div>
             )}
           </AnimatePresence>

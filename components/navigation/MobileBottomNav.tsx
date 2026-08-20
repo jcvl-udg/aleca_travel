@@ -14,7 +14,18 @@ const NAV_ITEMS = [
 export function MobileBottomNav() {
   const [active, setActive] = useState("explore");
   const [isVisible, setIsVisible] = useState(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleDrawerState = (event: Event) => {
+      const customEvent = event as CustomEvent<{ open: boolean }>;
+      setIsDrawerOpen(customEvent.detail.open);
+    };
+
+    window.addEventListener("destination-drawer", handleDrawerState);
+    return () => window.removeEventListener("destination-drawer", handleDrawerState);
+  }, []);
 
   // Auto-hide on scroll down, reveal on scroll up
   useEffect(() => {
@@ -34,7 +45,7 @@ export function MobileBottomNav() {
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {isVisible && !isDrawerOpen && (
         <motion.nav
           initial={{ y: 100 }}
           animate={{ y: 0 }}
