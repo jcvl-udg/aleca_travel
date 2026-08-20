@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Compass, Menu, Sparkles, X } from "lucide-react";
+import { Compass, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 const LINKS = [
   { label: "Destinos", href: "#destinos" },
   { label: "Mi Pasaporte", href: "#pasaporte" },
-  { label: "Club VIP", href: "#pasaporte" },
+  { label: "Club VIP", href: "#vip" },
 ];
 
 export function SiteNav() {
-  const [open, setOpen] = useState(false);
-
   return (
     <motion.header
       initial={{ y: -24, opacity: 0 }}
@@ -28,6 +25,7 @@ export function SiteNav() {
           <span className="font-serif text-lg tracking-tight">Aleca Travel</span>
         </a>
 
+        {/* Desktop Links */}
         <div className="hidden items-center gap-1 md:flex">
           {LINKS.map((link) => (
             <a
@@ -40,15 +38,19 @@ export function SiteNav() {
           ))}
         </div>
 
+        {/* User Points Indicator */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="glass-strong hidden items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 text-sm sm:flex"
+            className="glass-strong flex items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 text-sm"
           >
             <Sparkles className="h-4 w-4 text-gold" aria-hidden="true" />
-            <span className="tabular-nums">
+            <span className="tabular-nums hidden sm:inline">
               Mis Puntos: <span className="font-semibold text-foreground">2,400</span>{" "}
               <span className="text-muted-foreground">pts</span>
+            </span>
+            <span className="tabular-nums sm:hidden">
+              <span className="font-semibold text-foreground">2.4k</span>
             </span>
             <span
               className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-sky-500 text-xs font-semibold text-primary-foreground"
@@ -57,39 +59,8 @@ export function SiteNav() {
               AV
             </span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={open}
-            className="glass-strong flex h-9 w-9 items-center justify-center rounded-full md:hidden"
-          >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
         </div>
       </nav>
-
-      {open && (
-        <div className="glass mx-auto mt-2 max-w-6xl rounded-3xl p-3 md:hidden">
-          <div className="flex flex-col">
-            {LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-2xl px-4 py-3 text-sm text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="mt-1 flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm sm:hidden">
-              <Sparkles className="h-4 w-4 text-gold" aria-hidden="true" />
-              Mis Puntos: <span className="font-semibold">2,400 pts</span>
-            </div>
-          </div>
-        </div>
-      )}
     </motion.header>
   );
 }

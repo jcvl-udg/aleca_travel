@@ -20,12 +20,12 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Aleca Travel — El mundo es tuyo",
+  title: "Aleca Travel — Viajar es Evolucionar",
   description:
     "Traza tu siguiente aventura con Aleca Travel. Explora destinos de lujo en un globo interactivo, gana puntos y desbloquea tu pasaporte digital VIP.",
   keywords: ["viajes de lujo", "destinos", "club VIP", "pasaporte digital", "Aleca Travel"],
   openGraph: {
-    title: "Aleca Travel — El mundo es tuyo",
+    title: "Aleca Travel — Viajar es Evolucionar",
     description:
       "Explora destinos de lujo en un globo interactivo, gana puntos y desbloquea tu pasaporte digital VIP.",
     type: "website",

@@ -14,7 +14,7 @@ const POI_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 type Props = {
   filter: GlobeFilter;
   onSelect: (d: Destination) => void;
-  focusCoords?: { lat: number; lng: number } | null;
+  focusCoords?: FocusCoordinates | null;
   selectedDestination?: Destination | null;
 };
 
@@ -40,6 +40,12 @@ interface HtmlElementData {
 interface RingData {
   lat: number;
   lng: number;
+}
+
+export interface FocusCoordinates {
+  lat: number;
+  lng: number;
+  altitude?: number;
 }
 
 export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDestination }: Props) {
@@ -109,6 +115,14 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
     return selectedDestination ? [{ lat: selectedDestination.lat, lng: selectedDestination.lng }] : [];
   }, [selectedDestination]);
 
+  // Add a responsive altitude check
+  const getResponsiveAltitude = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 2.8; // Zoom out slightly on mobile to see the whole globe in narrow screens
+    }
+    return 2.3; // Default desktop zoom
+  };
+
   useEffect(() => {
     if (!ready || !globeRef.current) return;
     const globe = globeRef.current;
@@ -118,7 +132,9 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
     controls.enableZoom = true;
     controls.minPolarAngle = Math.PI / 5;
     controls.maxPolarAngle = Math.PI - Math.PI / 5;
-    globe.pointOfView({ lat: 18, lng: -35, altitude: 2.3 }, 0);
+    
+    // Use responsive altitude on initial load
+    globe.pointOfView({ lat: 18, lng: -35, altitude: getResponsiveAltitude() }, 0);
   }, [ready]);
 
   useEffect(() => {
@@ -128,12 +144,21 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
 
     if (focusCoords) {
       controls.autoRotate = false; 
+      
       globe.pointOfView(
-        { lat: focusCoords.lat, lng: focusCoords.lng, altitude: 0.65 }, 
-        1800 
+        { 
+          lat: focusCoords.lat, 
+          lng: focusCoords.lng, 
+          altitude: focusCoords.altitude ?? getResponsiveAltitude() // Acceso 100% tipado
+        }, 
+        1000 
       );
     } else {
       controls.autoRotate = true; 
+      globe.pointOfView(
+        { lat: 18, lng: -35, altitude: getResponsiveAltitude() }, 
+        1000 
+      );
     }
   }, [focusCoords, ready]);
 

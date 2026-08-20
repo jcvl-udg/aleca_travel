@@ -121,13 +121,13 @@ export function PassportSection() {
             aria-valuemax={target}
             aria-label="Progreso al nivel Oro"
           >
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: `${pct}%` }}
-              viewport={{ once: true }}
-              transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400"
-            />
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: `${pct}%` }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-500"
+          />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Solo <span className="font-medium text-foreground">600 pts</span> más para desbloquear
