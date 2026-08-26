@@ -32,7 +32,7 @@ export function UserDashboard({ user }: Props) {
   return (
     <section className="relative min-h-screen w-full bg-background pt-24 pb-12 px-4 lg:px-12">
       {/* Background Ambience */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
 
       <motion.div
         variants={containerVariants}
@@ -108,9 +108,13 @@ function AgentView({ user }: { user: UserSession }) {
       {/* CRM Quick Stats */}
       <motion.div variants={itemVariants} className="glass-strong rounded-3xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-medium text-white">Pipeline Activo</h2>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Asesor</p>
+            <h2 className="text-xl font-medium text-white">Pipeline Activo</h2>
+          </div>
           <Users className="h-5 w-5 text-muted-foreground" />
         </div>
+        <p className="mb-4 text-sm text-muted-foreground">Resumen para {user.name.split(" ")[0]}</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl bg-white/5 p-4">
             <p className="text-3xl font-serif text-white">12</p>

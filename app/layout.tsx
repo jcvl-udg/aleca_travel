@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Fraunces } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,22 +19,29 @@ const fraunces = Fraunces({
   style: ["normal", "italic"],
 });
 
+const cormorant = Cormorant_Garamond({
+  variable: "--font-vintage",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "Aleca Travel — Viajar es Evolucionar",
+  title: "Aleca Travel — Viajar es Recordar",
   description:
-    "Traza tu siguiente aventura con Aleca Travel. Explora destinos de lujo en un globo interactivo, gana puntos y desbloquea tu pasaporte digital VIP.",
+    "Traza tu siguiente aventura con Aleca Travel. Explora el mundo entre mapas, destinos memorables y un pasaporte VIP.",
   keywords: ["viajes de lujo", "destinos", "club VIP", "pasaporte digital", "Aleca Travel"],
   openGraph: {
-    title: "Aleca Travel — Viajar es Evolucionar",
+    title: "Aleca Travel — Viajar es Recordar",
     description:
-      "Explora destinos de lujo en un globo interactivo, gana puntos y desbloquea tu pasaporte digital VIP.",
+      "Explora el mundo entre mapas, destinos memorables y un pasaporte VIP.",
     type: "website",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
-  colorScheme: "dark",
+  themeColor: "#f3ead7",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({
@@ -45,7 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>

@@ -17,7 +17,7 @@ type Props = {
 
 export function GlobeFilterToggle({ value, onChange }: Props) {
   return (
-    <div className="glass inline-flex items-center gap-1 rounded-full p-1">
+    <div className="glass inline-flex items-center gap-1 rounded-full p-1" aria-label="Filtrar destinos del globo">
       {OPTIONS.map((opt) => {
         const active = value === opt.value;
         const Icon = opt.icon;

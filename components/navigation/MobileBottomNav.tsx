@@ -1,7 +1,7 @@
 "use client";
 
 import { Compass, Map, Stamp, Crown } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
@@ -15,7 +15,9 @@ export function MobileBottomNav() {
   const [active, setActive] = useState("explore");
   const [isVisible, setIsVisible] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const lastScrollY = useRef(0);
+  const pressTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const handleDrawerState = (event: Event) => {
@@ -23,29 +25,60 @@ export function MobileBottomNav() {
       setIsDrawerOpen(customEvent.detail.open);
     };
 
+    const handleFocusState = (event: Event) => {
+      const customEvent = event as CustomEvent<{ active: boolean }>;
+      setIsFocusMode(customEvent.detail.active);
+    };
+
     window.addEventListener("destination-drawer", handleDrawerState);
-    return () => window.removeEventListener("destination-drawer", handleDrawerState);
+    window.addEventListener("travel-focus", handleFocusState);
+
+    return () => {
+      window.removeEventListener("destination-drawer", handleDrawerState);
+      window.removeEventListener("travel-focus", handleFocusState);
+    };
   }, []);
 
   // Auto-hide on scroll down, reveal on scroll up
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         setIsVisible(false);
       } else {
         setIsVisible(true);
       }
-      setLastScrollY(currentScrollY);
+      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+  }, []);
+
+  const startRevealPress = () => {
+    pressTimer.current = window.setTimeout(() => setIsVisible(true), 650);
+  };
+
+  const cancelRevealPress = () => {
+    if (pressTimer.current !== null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
 
   return (
     <AnimatePresence>
-      {isVisible && !isDrawerOpen && (
+      {!isVisible && !isDrawerOpen && !isFocusMode && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 h-12 md:hidden"
+          aria-label="Mantén pulsado para mostrar la navegación"
+          onPointerDown={startRevealPress}
+          onPointerUp={cancelRevealPress}
+          onPointerCancel={cancelRevealPress}
+          onPointerLeave={cancelRevealPress}
+        />
+      )}
+      {isVisible && !isDrawerOpen && !isFocusMode && (
         <motion.nav
           initial={{ y: 100 }}
           animate={{ y: 0 }}
@@ -64,6 +97,7 @@ export function MobileBottomNav() {
                   key={item.id}
                   href={item.href}
                   onClick={() => setActive(item.id)}
+                  aria-current={isActive ? "page" : undefined}
                   className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl p-2 text-xs transition-colors"
                 >
                   {isActive && (

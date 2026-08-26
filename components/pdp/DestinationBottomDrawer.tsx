@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, CheckCircle2, Clock, MapPin, Plane, ArrowRight, Sparkles } from "lucide-react";
+import { X, CheckCircle2, Clock, MapPin, Plane, ArrowRight, Sparkles, Star } from "lucide-react";
 import type { Destination } from "@/lib/destinations";
 
 type Props = {
@@ -29,10 +29,21 @@ const MOCK_ITINERARY = [
   },
 ];
 
+const WHATSAPP_NUMBER = "5215555555555";
+
 export function DestinationBottomDrawer({ destination, onClose }: Props) {
   const [reservationState, setReservationState] = useState<"idle" | "flying" | "confirmed">("idle");
 
-  const startReservation = () => setReservationState("flying");
+  const startReservation = () => {
+    window.dispatchEvent(new CustomEvent("travel-request", {
+      detail: { destinationId: destination.id, destinationName: destination.name, source: "quick-flow" },
+    }));
+    setReservationState("flying");
+  };
+
+  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+    `Hola Aleca Travel. Quiero personalizar un viaje a ${destination.name} (${destination.landmark}).`,
+  )}`;
 
   return (
     <>
@@ -73,11 +84,16 @@ export function DestinationBottomDrawer({ destination, onClose }: Props) {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Solicitud enviada</p>
               <h2 className="mt-3 font-serif text-3xl text-white sm:text-4xl">Tu viaje a {destination.name} empieza aquí</h2>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                Un asesor VIP se pondrá en contacto contigo para personalizar cada detalle de tu itinerario.
+                Tu solicitud quedó preparada. Continúa por WhatsApp para cerrar los detalles con un asesor VIP.
               </p>
-              <button onClick={onClose} className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110">
-                Volver al globo <ArrowRight className="h-4 w-4" />
-              </button>
+              <div className="mt-8 flex w-full max-w-sm flex-col gap-2 sm:flex-row">
+                <a href={whatsappHref} target="_blank" rel="noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110">
+                  Continuar por WhatsApp <ArrowRight className="h-4 w-4" />
+                </a>
+                <button onClick={onClose} className="inline-flex items-center justify-center rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                  Volver
+                </button>
+              </div>
             </motion.div>
           ) : (
             <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-0 flex-1 flex-col">
@@ -103,6 +119,20 @@ export function DestinationBottomDrawer({ destination, onClose }: Props) {
                       <p className="text-sm text-primary">Gana {destination.points} pts VIP</p>
                     </div>
                   </div>
+
+                  <div className="glass-strong rounded-2xl p-3">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                      <span>Valoración</span>
+                      <span>Desde</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-sm font-medium text-white">
+                        <Star className="h-4 w-4 fill-current text-gold" /> {destination.rating.toFixed(1)}
+                      </span>
+                      <span className="text-xl font-semibold text-white">${destination.price}</span>
+                    </div>
+                  </div>
+
                   <p className="text-sm leading-relaxed text-muted-foreground">{destination.blurb}</p>
                   <button
                     onClick={startReservation}

@@ -54,6 +54,16 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
   const onSelectRef = useRef(onSelect);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [ready, setReady] = useState(false);
+  const [visualStyle, setVisualStyle] = useState<"atlas" | "globe">("atlas");
+
+  useEffect(() => {
+    const handleVisualStyleChange = (event: Event) => {
+      const nextStyle = (event as CustomEvent<{ style: "atlas" | "globe" }>).detail.style;
+      setVisualStyle(nextStyle);
+    };
+    window.addEventListener("visual-theme-change", handleVisualStyleChange);
+    return () => window.removeEventListener("visual-theme-change", handleVisualStyleChange);
+  }, []);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -99,8 +109,16 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
         });
       });
     }
+
+    // Folklore markers keep the atlas feeling alive without adding a heavy 3D asset pipeline.
+    if (!selectedDestination && visualStyle === "atlas") {
+      elements.push(
+        { id: "sea-serpent-atlantic", lat: 18, lng: -42, name: "Avistamiento", type: "sea-monster" },
+        { id: "sea-serpent-pacific", lat: 8, lng: -155, name: "Criatura marina", type: "sea-monster" },
+      );
+    }
     return elements;
-  }, [visibleDestinations, selectedDestination]);
+  }, [visibleDestinations, selectedDestination, visualStyle]);
 
   const arcs: ArcData[] = useMemo(() => visibleDestinations.map((d) => ({
     startLat: ORIGIN.lat,
@@ -178,6 +196,13 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
       return el;
     }
 
+    if (data.type === "sea-monster") {
+      el.className = "globe-sea-monster";
+      el.innerHTML = `<span class="globe-sea-monster__tail">~</span><span class="globe-sea-monster__body">≈</span><span class="globe-sea-monster__eye">·</span>`;
+      el.title = `${data.name}: leyenda del atlas`;
+      return el;
+    }
+
     el.className = `globe-pin globe-pin--${data.status}`;
     el.innerHTML = `
       <div class="globe-pin__ring"></div>
@@ -194,6 +219,17 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
 
   return (
     <div ref={containerRef} className="absolute inset-0">
+      {!ready && (
+        <div className="globe-loading absolute inset-0 z-10 flex items-center justify-center p-6" role="status" aria-live="polite">
+          <div className="globe-loading__card glass-strong flex items-center gap-3 px-4 py-3">
+            <span className="globe-loading__orb" aria-hidden="true" />
+            <span>
+              <strong className="block text-sm">Preparando el globo</strong>
+              <small className="mt-0.5 block text-xs text-muted-foreground">Tu atlas aparecerá en un momento</small>
+            </span>
+          </div>
+        </div>
+      )}
       {size.width > 0 && (
         <Globe
           ref={globeRef}
@@ -201,10 +237,11 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
           height={size.height}
           onGlobeReady={() => setReady(true)}
           backgroundColor="rgba(0,0,0,0)"
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+          globeImageUrl={visualStyle === "atlas" ? "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg" : "//unpkg.com/three-globe/example/img/earth-day.jpg"}
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-          atmosphereColor="#1dbbf4"
-          atmosphereAltitude={0.28}
+          atmosphereColor={visualStyle === "atlas" ? "#a95032" : "#53766d"}
+          atmosphereAltitude={0.18}
+          showGraticules={visualStyle === "atlas"}
           
           arcsData={arcs}
           arcStartLat={(d: object) => (d as ArcData).startLat}
@@ -213,8 +250,8 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
           arcEndLng={(d: object) => (d as ArcData).endLng}
           arcColor={(d: object) =>
             (d as ArcData).status === "visited"
-              ? ["rgba(245,196,81,0.05)", "rgba(245,196,81,0.9)"]  
-              : ["rgba(29,187,244,0.05)", "rgba(29,187,244,0.95)"] 
+              ? ["rgba(185,129,47,0.05)", "rgba(185,129,47,0.9)"]
+              : ["rgba(169,80,50,0.05)", "rgba(169,80,50,0.9)"]
           }
           arcAltitudeAutoScale={0.45}
           arcStroke={0.45}
@@ -226,7 +263,7 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
           ringsData={ringsData}
           ringLat={(d: object) => (d as RingData).lat}
           ringLng={(d: object) => (d as RingData).lng}
-          ringColor={() => "#1dbbf4"}
+          ringColor={() => visualStyle === "atlas" ? "#a95032" : "#53766d"}
           ringMaxRadius={3}
           ringPropagationSpeed={2}
           ringRepeatPeriod={800}

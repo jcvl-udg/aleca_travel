@@ -12,6 +12,10 @@ export type Destination = {
   points: number;
   image: string;
   blurb: string;
+  landmark: string;
+  vibe: string;
+  duration: string;
+  bestFor: string;
 };
 
 // User's origin city (Ciudad de México) — arcs originate here.
@@ -30,6 +34,27 @@ export const DESTINATIONS: Destination[] = [
     points: 620,
     image: "/destinations/paris.png",
     blurb: "Noches doradas junto al Sena y suites con vista a la Torre Eiffel.",
+    landmark: "Torre Eiffel",
+    vibe: "romance y arte",
+    duration: "4 noches",
+    bestFor: "cultura y cenas",
+  },
+  {
+    id: "london",
+    name: "Londres",
+    country: "Reino Unido",
+    lat: 51.5072,
+    lng: -0.1276,
+    status: "target",
+    rating: 4.8,
+    price: 2090,
+    points: 680,
+    image: "/destinations/paris.png",
+    blurb: "Tardes junto al Támesis, teatros históricos y hoteles con carácter.",
+    landmark: "Big Ben",
+    vibe: "clásico y chic",
+    duration: "5 noches",
+    bestFor: "hotel boutique",
   },
   {
     id: "tokyo",
@@ -43,6 +68,10 @@ export const DESTINATIONS: Destination[] = [
     points: 780,
     image: "/destinations/tokyo.png",
     blurb: "Neón, alta cocina y ryokans privados en el corazón de Shibuya.",
+    landmark: "Torre de Tokio",
+    vibe: "neón y gastronomía",
+    duration: "6 noches",
+    bestFor: "street food y diseño",
   },
   {
     id: "cancun",
@@ -56,6 +85,10 @@ export const DESTINATIONS: Destination[] = [
     points: 450,
     image: "/destinations/cancun.png",
     blurb: "Caribe turquesa, resorts all-inclusive y cenotes escondidos.",
+    landmark: "Cenotes del Caribe",
+    vibe: "playa y descanso",
+    duration: "5 noches",
+    bestFor: "sol y relajación",
   },
   {
     id: "bali",
@@ -69,6 +102,10 @@ export const DESTINATIONS: Destination[] = [
     points: 850,
     image: "/destinations/bali.png",
     blurb: "Villas con piscina infinita sobre selvas y arrozales al atardecer.",
+    landmark: "Templo de Uluwatu",
+    vibe: "wellness y naturaleza",
+    duration: "7 noches",
+    bestFor: "luna de miel",
   },
   {
     id: "cairo",
@@ -82,5 +119,9 @@ export const DESTINATIONS: Destination[] = [
     points: 700,
     image: "/destinations/cairo.png",
     blurb: "Las pirámides al amanecer y cruceros de lujo por el Nilo.",
+    landmark: "Pirámides de Guiza",
+    vibe: "historia y aventura",
+    duration: "5 noches",
+    bestFor: "patrimonio y safari",
   },
 ];
