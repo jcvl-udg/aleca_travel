@@ -5,10 +5,10 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
-  { id: "explore", label: "Explorar", icon: Compass, href: "#" },
-  { id: "destinations", label: "Destinos", icon: Map, href: "#destinos" },
-  { id: "passport", label: "Pasaporte", icon: Stamp, href: "#pasaporte" },
-  { id: "vip", label: "Club VIP", icon: Crown, href: "#vip" },
+  { id: "explore", label: "Explorar", icon: Compass, view: "search" },
+  { id: "destinations", label: "Destinos", icon: Map, view: "map" },
+  { id: "passport", label: "Pasaporte", icon: Stamp, view: "passport" },
+  { id: "vip", label: "Club VIP", icon: Crown, view: "passport" },
 ];
 
 export function MobileBottomNav() {
@@ -16,6 +16,7 @@ export function MobileBottomNav() {
   const [isVisible, setIsVisible] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isImmersive, setIsImmersive] = useState(false);
   const lastScrollY = useRef(0);
   const pressTimer = useRef<number | null>(null);
 
@@ -30,12 +31,26 @@ export function MobileBottomNav() {
       setIsFocusMode(customEvent.detail.active);
     };
 
+    const handleViewState = (event: Event) => {
+      const view = (event as CustomEvent<{ view: string }>).detail.view;
+      const nextActive = view === "map" ? "destinations" : view === "passport" ? "passport" : "explore";
+      setActive(nextActive);
+    };
+
+    const handleImmersiveMode = (event: Event) => {
+      setIsImmersive((event as CustomEvent<{ active: boolean }>).detail.active);
+    };
+
     window.addEventListener("destination-drawer", handleDrawerState);
     window.addEventListener("travel-focus", handleFocusState);
+    window.addEventListener("exploration-view-change", handleViewState);
+    window.addEventListener("immersive-mode-change", handleImmersiveMode);
 
     return () => {
       window.removeEventListener("destination-drawer", handleDrawerState);
       window.removeEventListener("travel-focus", handleFocusState);
+      window.removeEventListener("exploration-view-change", handleViewState);
+      window.removeEventListener("immersive-mode-change", handleImmersiveMode);
     };
   }, []);
 
@@ -66,6 +81,11 @@ export function MobileBottomNav() {
     }
   };
 
+  const navigate = (view: string, id: string) => {
+    setActive(id);
+    window.dispatchEvent(new CustomEvent("exploration-navigation", { detail: { view } }));
+  };
+
   return (
     <AnimatePresence>
       {!isVisible && !isDrawerOpen && !isFocusMode && (
@@ -78,7 +98,7 @@ export function MobileBottomNav() {
           onPointerLeave={cancelRevealPress}
         />
       )}
-      {isVisible && !isDrawerOpen && !isFocusMode && (
+      {isVisible && !isDrawerOpen && !isFocusMode && !isImmersive && (
         <motion.nav
           initial={{ y: 100 }}
           animate={{ y: 0 }}
@@ -93,10 +113,10 @@ export function MobileBottomNav() {
               const isActive = active === item.id;
 
               return (
-                <a
+                <button
                   key={item.id}
-                  href={item.href}
-                  onClick={() => setActive(item.id)}
+                  type="button"
+                  onClick={() => navigate(item.view, item.id)}
                   aria-current={isActive ? "page" : undefined}
                   className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl p-2 text-xs transition-colors"
                 >
@@ -119,7 +139,7 @@ export function MobileBottomNav() {
                   >
                     {item.label}
                   </span>
-                </a>
+                </button>
               );
             })}
           </div>

@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import type { GlobeMethods } from "react-globe.gl";
 import { DESTINATIONS, ORIGIN, type Destination } from "@/lib/destinations";
 import type { GlobeFilter } from "./globe-filter";
+import { useGeoJSON, type GeoJSONFeature } from "@/hooks/useGeoJSON";
+import { useTravelStore } from "@/store/useTravelStore";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
 
@@ -55,6 +57,9 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [ready, setReady] = useState(false);
   const [visualStyle, setVisualStyle] = useState<"atlas" | "globe">("atlas");
+  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+  const { data: countries, loading: countriesLoading, error: countriesError } = useGeoJSON();
+  const suggestHotelsInArea = useTravelStore((state) => state.suggestHotelsInArea);
 
   useEffect(() => {
     const handleVisualStyleChange = (event: Event) => {
@@ -86,6 +91,20 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
     if (filter === "all") return DESTINATIONS;
     return DESTINATIONS.filter((d) => d.status === filter);
   }, [filter]);
+
+  const countryCenter = (feature: GeoJSONFeature): [number, number] => {
+    if (feature.properties?.center) return feature.properties.center;
+    const coordinates = feature.geometry.coordinates.flat(2) as [number, number][];
+    const bounds = coordinates.reduce(([minLng, minLat, maxLng, maxLat], [lng, lat]) => [
+      Math.min(minLng, lng), Math.min(minLat, lat), Math.max(maxLng, lng), Math.max(maxLat, lat),
+    ], [180, 90, -180, -90]);
+    return [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+  };
+
+  const handleCountryClick = (feature: GeoJSONFeature) => {
+    const [lng, lat] = countryCenter(feature);
+    suggestHotelsInArea({ label: feature.properties?.name ?? "esta región", lat, lng, radius: 50 });
+  };
 
   const renderElements = useMemo(() => {
     const elements: HtmlElementData[] = visibleDestinations.map(d => ({
@@ -242,6 +261,18 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
           atmosphereColor={visualStyle === "atlas" ? "#a95032" : "#53766d"}
           atmosphereAltitude={0.18}
           showGraticules={visualStyle === "atlas"}
+
+          polygonsData={countries?.features ?? []}
+          polygonCapColor={(feature: object) => {
+            const country = feature as GeoJSONFeature;
+            return country.properties?.name === hoveredCountry ? "rgba(185,129,47,0.68)" : "rgba(169,80,50,0.3)";
+          }}
+          polygonSideColor={() => "rgba(83,118,109,0.18)"}
+          polygonStrokeColor={() => visualStyle === "atlas" ? "#b98432" : "#53766d"}
+          polygonAltitude={0.012}
+          polygonLabel={(feature: object) => `<b>${(feature as GeoJSONFeature).properties?.name ?? "Región"}</b>`}
+          onPolygonHover={(feature: object | null) => setHoveredCountry(feature ? ((feature as GeoJSONFeature).properties?.name ?? null) : null)}
+          onPolygonClick={(feature: object) => handleCountryClick(feature as GeoJSONFeature)}
           
           arcsData={arcs}
           arcStartLat={(d: object) => (d as ArcData).startLat}
@@ -275,6 +306,8 @@ export default function TravelGlobe({ filter, onSelect, focusCoords, selectedDes
           htmlElement={buildPin}
         />
       )}
+      {countriesLoading && <p className="absolute bottom-5 left-5 text-xs text-muted-foreground">Cargando fronteras...</p>}
+      {countriesError && <p className="absolute bottom-5 left-5 text-xs text-muted-foreground">El atlas está disponible sin fronteras detalladas.</p>}
     </div>
   );
 }

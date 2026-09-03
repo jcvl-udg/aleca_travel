@@ -83,7 +83,7 @@ export function TravelMap({ onSelect, onOpenDetails }: Props) {
             <span className="map-compass__south">S</span>
           </div>
 
-          <div className="map-route-card absolute bottom-16 left-5 z-10 max-w-[15rem] border border-border bg-card/90 p-3 backdrop-blur-sm sm:bottom-20 sm:left-7">
+          {/* <div className="map-route-card absolute bottom-16 left-5 z-10 max-w-[15rem] border border-border bg-card/90 p-3 backdrop-blur-sm sm:bottom-20 sm:left-7">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Ruta sugerida</p>
             <p className="mt-1 font-serif text-xl">{selectedRegion.eyebrow}</p>
             <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -91,7 +91,7 @@ export function TravelMap({ onSelect, onOpenDetails }: Props) {
               <span>{destinations.length} paradas · curaduría VIP</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Toca un pin para abrir la pre-reserva.</p>
-          </div>
+          </div> */}
 
           <TravelWorldScene mode="map" onSelect={onSelect} />
 

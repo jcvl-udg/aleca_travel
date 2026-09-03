@@ -813,6 +813,7 @@ body {
   border-radius: 1.25rem;
   background: color-mix(in srgb, var(--card) 22%, transparent);
   box-shadow: 0 1.5rem 4rem color-mix(in srgb, var(--ink) 16%, transparent);
+  pointer-events: none;
 }
 
 .world-camera-view--globe { inset: 12% 34% 12% 5%; }
@@ -844,6 +845,20 @@ body {
 }
 
 .world-room-label span { color: var(--muted-foreground); }
+
+.world-brochure-stack {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 8.5rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 0.2rem solid var(--primary);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--foreground);
+  box-shadow: 0 0.75rem 1.5rem color-mix(in srgb, var(--ink) 16%, transparent);
+  font-size: 0.58rem;
+}
+
+.world-brochure-stack span { color: var(--muted-foreground); }
 
 @keyframes globe-loading-spin {
   to { transform: rotate(360deg); }

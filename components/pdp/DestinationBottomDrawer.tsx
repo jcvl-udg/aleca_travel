@@ -1,48 +1,65 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, CheckCircle2, Clock, MapPin, Plane, ArrowRight, Sparkles, Star } from "lucide-react";
+import { X, CheckCircle2, MapPin, ArrowRight, Sparkles, Star, BedDouble, Wallet } from "lucide-react";
 import type { Destination } from "@/lib/destinations";
+import type { Activities } from "@/lib/activities-types";
 
 type Props = {
   destination: Destination;
   onClose: () => void;
 };
 
-const MOCK_ITINERARY = [
-  {
-    day: "Día 1: Llegada VIP",
-    time: "14:00 PM",
-    desc: "Traslado en helicóptero privado desde el aeropuerto directo a la terraza de su suite. Check-in con champagne.",
-  },
-  {
-    day: "Día 2: Inmersión Local",
-    time: "09:00 AM",
-    desc: "Guía privado certificado para explorar la región con acceso exclusivo antes de la apertura al público general.",
-  },
-  {
-    day: "Día 3: Alta Cocina",
-    time: "20:00 PM",
-    desc: "Cena de 7 tiempos maridada por el sommelier del resort en la mesa del chef, reservada en exclusiva.",
-  },
-];
-
 const WHATSAPP_NUMBER = "5215555555555";
+const hotelCurrency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+const activitiesEnabled = process.env.NEXT_PUBLIC_HOTELBEDS_ACTIVITIES_ENABLED === "true";
 
 export function DestinationBottomDrawer({ destination, onClose }: Props) {
-  const [reservationState, setReservationState] = useState<"idle" | "flying" | "confirmed">("idle");
+  const [reservationState, setReservationState] = useState<"idle" | "confirmed">("idle");
+  const [activities, setActivities] = useState<Activities[]>([]);
+  const [activitiesState, setActivitiesState] = useState<"loading" | "ready" | "unavailable">(activitiesEnabled ? "loading" : "unavailable");
+  const hotelRate = destination.hotelDetails?.rates[0];
+
+  useEffect(() => {
+    if (!activitiesEnabled) return;
+    let cancelled = false;
+    fetch("/api/activities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ destination: destination.hotelDetails?.destinationCode ?? destination.hotelDetails?.destinationName ?? destination.name }),
+    })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data: { activities?: Activities[] } | null) => {
+        if (cancelled) return;
+        const results = data?.activities ?? [];
+        setActivities(results);
+        setActivitiesState(results.length > 0 ? "ready" : "unavailable");
+      })
+      .catch(() => {
+        if (!cancelled) setActivitiesState("unavailable");
+      });
+    return () => { cancelled = true; };
+  }, [destination.hotelDetails?.destinationCode, destination.hotelDetails?.destinationName, destination.name]);
 
   const startReservation = () => {
     window.dispatchEvent(new CustomEvent("travel-request", {
-      detail: { destinationId: destination.id, destinationName: destination.name, source: "quick-flow" },
+      detail: {
+        destinationId: destination.id,
+        destinationName: destination.name,
+        source: "quick-flow",
+        rateKey: hotelRate?.rateKey,
+        boardName: hotelRate?.boardName,
+        roomCode: hotelRate?.roomCode,
+        sellingRate: hotelRate?.sellingRate,
+      },
     }));
-    setReservationState("flying");
+    setReservationState("confirmed");
   };
 
   const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hola Aleca Travel. Quiero personalizar un viaje a ${destination.name} (${destination.landmark}).`,
+    `Hola Aleca Travel. Quiero personalizar un viaje a ${destination.name} (${destination.landmark}).${hotelRate ? ` Habitación: ${hotelRate.roomName} (${hotelRate.roomCode}). Régimen: ${hotelRate.boardName}. Precio: ${hotelCurrency.format(hotelRate.sellingRate)}. rateKey: ${hotelRate.rateKey}` : ""}` ,
   )}`;
 
   return (
@@ -129,41 +146,51 @@ export function DestinationBottomDrawer({ destination, onClose }: Props) {
                       <span className="flex items-center gap-1 text-sm font-medium text-white">
                         <Star className="h-4 w-4 fill-current text-gold" /> {destination.rating.toFixed(1)}
                       </span>
-                      <span className="text-xl font-semibold text-white">${destination.price}</span>
+                      <span className="text-xl font-semibold text-white">{hotelRate ? hotelCurrency.format(hotelRate.sellingRate) : `$${destination.price}`}</span>
                     </div>
+                  </div>
+
+                  {hotelRate && destination.hotelDetails && (
+                    <div className="glass-strong space-y-3 rounded-2xl p-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-white"><BedDouble className="h-4 w-4 text-primary" /> {hotelRate.roomName} · {hotelRate.roomCode}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <span>Régimen<br /><strong className="font-medium text-white">{hotelRate.boardName}</strong></span>
+                        <span>Pago<br /><strong className="font-medium text-white">{hotelRate.paymentType === "AT_HOTEL" ? "En hotel" : "Online"}</strong></span>
+                        <span>Neto<br /><strong className="font-medium text-white">{hotelCurrency.format(hotelRate.net)}</strong></span>
+                        <span>Venta<br /><strong className="font-medium text-white">{hotelCurrency.format(hotelRate.sellingRate)}</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2 border-t border-white/10 pt-2"><Wallet className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{hotelRate.cancellationLabel}{hotelRate.cancellationDate ? ` hasta ${hotelRate.cancellationDate}` : ""}</span></div>
+                    </div>
+                  )}
+
+                  <div className="glass-strong rounded-2xl p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Actividades para añadir</p>
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Hotelbeds test</span>
+                    </div>
+                    {activitiesState === "loading" && <p className="mt-3 text-xs text-muted-foreground">Buscando experiencias en el destino...</p>}
+                    {activitiesState === "ready" && <div className="mt-3 space-y-2">{activities.map((activity) => <div key={activity.code} className="rounded-xl border border-white/10 p-3"><p className="text-sm font-medium text-white">{activity.name}</p><p className="mt-1 text-xs text-muted-foreground">{activity.type} · {activity.modalities.length} opciones · {activity.paxRange.min}–{activity.paxRange.max} viajeros</p></div>)}</div>}
+                    {activitiesState === "unavailable" && <><p className="mt-3 text-xs leading-relaxed text-muted-foreground">No hay actividades confirmadas para este destino todavía. La consulta queda lista para conectarse al entorno de pruebas.</p><p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-primary">Elige la estancia y el agente podrá añadir experiencias después</p></>}
                   </div>
 
                   <p className="text-sm leading-relaxed text-muted-foreground">{destination.blurb}</p>
                   <button
                     onClick={startReservation}
-                    disabled={reservationState === "flying"}
-                    className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:cursor-wait disabled:opacity-70 glow-primary"
+                    className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 glow-primary"
                   >
-                    Continuar con la reservación
+                    Pre-reserva enviada al agente
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
 
                 <div className="space-y-4 lg:pr-2">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tu itinerario</p>
-                    <h3 className="mt-1 font-serif text-2xl text-white">Tres días a tu medida</h3>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Siguiente paso</p>
+                    <h3 className="mt-1 font-serif text-2xl text-white">Tu estancia, lista para ajustar</h3>
                   </div>
-                  <div className="relative space-y-3 before:absolute before:bottom-5 before:left-5 before:top-5 before:w-px before:bg-gradient-to-b before:from-primary/50 before:via-white/15 before:to-transparent">
-                    {MOCK_ITINERARY.map((item, idx) => (
-                      <div key={item.day} className="relative flex gap-3">
-                        <div className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-background text-primary">
-                          {idx === 0 ? <MapPin className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                        </div>
-                        <div className="glass-strong min-w-0 flex-1 rounded-2xl p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-white">{item.day}</h4>
-                            <span className="text-[10px] text-muted-foreground">{item.time}</span>
-                          </div>
-                          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="glass-strong rounded-2xl p-4 text-sm leading-relaxed text-muted-foreground">
+                    <p>Un asesor confirmará disponibilidad, condiciones y cualquier extra que quieras añadir.</p>
+                    <p className="mt-3 text-xs text-primary">No necesitas definir vuelos ni actividades para enviar esta solicitud.</p>
                   </div>
                 </div>
               </div>
@@ -171,25 +198,6 @@ export function DestinationBottomDrawer({ destination, onClose }: Props) {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {reservationState === "flying" && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-black/20"
-            >
-              <motion.div
-                initial={{ x: "-15vw", y: "38vh", rotate: -18, scale: 0.7, opacity: 0 }}
-                animate={{ x: "105vw", y: "-18vh", rotate: 18, scale: 1.15, opacity: [0, 1, 1, 0] }}
-                transition={{ duration: 1.15, ease: "easeInOut" }}
-                onAnimationComplete={() => setReservationState("confirmed")}
-                className="absolute left-1/2 top-1/2 text-primary drop-shadow-[0_0_18px_rgba(29,187,244,0.8)]"
-              >
-                <Plane className="h-16 w-16" />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
     </>
   );

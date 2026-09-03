@@ -1,8 +1,9 @@
 "use client";
 
 import { Compass, Map, Search } from "lucide-react";
+import type { ExplorationView } from "@/store/useTravelStore";
 
-export type ExplorationView = "globe" | "map" | "search";
+export type { ExplorationView } from "@/store/useTravelStore";
 
 type Props = {
   value: ExplorationView;

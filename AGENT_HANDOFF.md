@@ -21,11 +21,12 @@ components/
   hero.tsx          # Hero, selección de destino, foco, drawer y filtros
   travel-globe.tsx  # Globo Three.js/react-globe.gl, arcos, pines y POI
   travel-map.tsx    # Vista 2D editorial, regiones, pins y lista de destinos
-  travel-search.tsx # Vista de búsqueda simple y resultados filtrados
+  OrthogonalWorldMap.tsx # Mapa R3F ortográfico con extrusión GeoJSON
+  travel-search.tsx # Búsqueda phone-first, barra sticky y resultados filtrados
   view-mode-selector.tsx # Selector superior Globo/Mapa/Buscar
   destination-scene.tsx # Escena reactiva compartida: hito, viajero y cuaderno
   site-nav.tsx      # Navegación, selector Atlas/Globo, claro/oscuro, puntos
-  search-panel.tsx  # Formulario visual de búsqueda
+  search-panel.tsx  # Formulario visual legacy/compacto; el flujo activo vive en TravelSearch
   globe-filter.tsx  # Filtros Todos/Mis viajes/Deseados
   passport-section.tsx # Sellos y progreso VIP
   dashboard/UserDashboard.tsx # Vista CLIENT/AGENT
@@ -33,6 +34,9 @@ components/
   pdp/DestinationBottomDrawer.tsx # Detalle y solicitud de itinerario
 hooks/
   use-globe-capability.ts # Gate de hardware, ahorro de datos y movimiento reducido
+  useGeoJSON.ts # Carga cancelable de fronteras GeoJSON
+store/
+  useTravelStore.ts # Estado global de exploración y área hotelera
 lib/
   destinations.ts   # Tipos, origen y destinos mock
   mock-db.ts        # Tipos y usuarios mock
@@ -45,9 +49,9 @@ public/destinations/ # Imágenes locales de destinos
 
 1. `SiteNav`
 2. `Hero` dentro de `#destinos`
-3. `PassportSection` dentro de `#pasaporte`
-4. `UserDashboard` dentro de `#vip`
-5. footer y `MobileBottomNav`
+3. footer y `MobileBottomNav`
+
+`PassportSection` y `UserDashboard` siguen disponibles como componentes aislados, pero no se montan en la home activa: el pasaporte digital no aporta valor al flujo de solicitud hotelera.
 
 `Hero` mantiene estos estados:
 
@@ -55,8 +59,12 @@ public/destinations/ # Imágenes locales de destinos
 - `filter`: `all | visited | target`.
 - `selected`: destino enfocado.
 - `focusCoords`: coordenadas usadas por el globo.
+
+El estado transversal vive en `store/useTravelStore.ts` (Zustand): `view`, `filter`, `selectedDestination`, `focusCoords` y `hotelSearchArea`. Se mantiene Zustand, no URL params, porque la exploración no requiere deep-linking ni SEO por vista.
 - `isDrawerOpen`: detalle del destino.
 - `wordIndex`: rotación del mensaje editorial.
+- `section`: `explore` o `passport`.
+- `selected`: se conserva mientras el detalle está abierto; Search y Map permanecen montados y se ocultan visualmente para no reiniciar su estado.
 
 Al seleccionar un pin: se enfoca el globo, aparece la vista de destino y se puede abrir `DestinationBottomDrawer`. Al cerrar, se restaura la vista general. No romper este contrato al cambiar UI.
 
@@ -65,7 +73,16 @@ La exploración usa tres vistas hermanas dentro de `Hero`:
 - `globe`: no contiene `SearchPanel`; solo explora el planeta, filtros, escena reactiva y cuaderno.
 - `globe`: conserva `TravelGlobe` para descubrimiento espacial 3D y navegación por coordenadas.
 - `map`: `TravelMap` ofrece mapa editorial cenital/2.5D, `Mapa completo` y regiones `Las Américas`, `Europa`, `Asia` y `África y Oriente`; seleccionar un destino lleva primero a `DestinationScene`.
-- `search`: `TravelSearch` es la única vista con búsqueda; filtra por nombre, país, hito o descripción. Seleccionar un resultado lleva primero a `DestinationScene`.
+- `search`: `TravelSearch` es la única vista con búsqueda. El botón `Simular búsqueda Mallorca` rellena Majorca/PMI, 15–16 marzo 2019, 2 adultos y muestra la respuesta mock de Hotelbeds. Tras buscar, el formulario se colapsa y una sola barra sticky conserva la lupa, el destino editable, el botón `Buscar` y los filtros; queda debajo de la navegación fija mediante `top-20`. Las tarjetas muestran una tarifa recomendada y permiten expandir alternativas sin desplegar listas duplicadas.
+
+Fase 2: `TravelSearch` usa disclosure progresivo (destino -> fechas -> viajeros), con test en `components/travel-search.test.tsx`. Ejecutar `npm test`.
+
+Fase 3: `hooks/useGeoJSON.ts` carga `/countries.geojson`; `components/travel-globe.tsx` usa `polygonsData`, hover y click. El click publica `{ label, lat, lng, radius: 50 }` mediante `suggestHotelsInArea` en Zustand. El GeoJSON local es simplificado y debe sustituirse por fronteras completas antes de producción.
+- `TravelGlobe` muestra un aviso no bloqueante si falla el GeoJSON. Al pulsar un país actualiza `hotelSearchArea` para la futura consulta geoespacial.
+
+El drawer consulta actividades opcionales mediante `POST /api/activities`. La ruta firma la llamada al entorno de pruebas de Hotelbeds en servidor con `HOTELBEDS_API_KEY` y `HOTELBEDS_SECRET`, usando el código de destino preservado por el adaptador (`PMI` para Majorca). Sin esas variables devuelve `503` y el drawer muestra un estado honesto de no disponibilidad, sin inventar actividades de otro destino.
+
+El cliente solo llama a esa ruta cuando `NEXT_PUBLIC_HOTELBEDS_ACTIVITIES_ENABLED=true`. Por defecto es `false`, evitando requests y ruido de `503` mientras la integración no esté configurada. Ver `.env.example`.
 
 `ViewModeSelector` controla el modo con un selector superior. Mantenerlo como estado local de `Hero`, no como rutas separadas, hasta que exista una necesidad real de deep-linking o SEO por modo.
 
@@ -77,10 +94,19 @@ Orden de producto: `Buscar` es la conversión primaria, `Mapa` la exploración e
 
 ## 4. Estado honesto de las visualizaciones
 
-- **Globo actual:** Three.js indirecto mediante `react-globe.gl`; textura remota, arcos, pins HTML, retícula y marcadores marinos. Todavía no incluye personaje 3D, monumentos 3D ni cámara hacia un cuaderno 3D.
+- **Globo actual:** `TravelWorldScene` usa React Three Fiber/Drei en un único Canvas compartido con dos cámaras `View`; se carga con `next/dynamic` y `ssr: false` desde `Hero`, por lo que Search y Map no montan el renderer 3D. `TravelGlobe` con `react-globe.gl` permanece como alternativa aislada.
 - **Mapa actual:** SVG editorial con zonas, pins, ruta, brújula y perspectiva CSS en desktop. No es un mapa ortográfico 3D ni GIS.
-- **Escena actual:** `DestinationScene` es CSS/DOM con perspectiva; sirve para validar jerarquía y flujo, pero no debe considerarse una escena 2.5D terminada.
-- **Búsqueda actual:** filtrado local de `DESTINATIONS`; no necesita consultas mientras los datos sean mock.
+- **Mapa Fase 4:** `Hero` sustituye `TravelMap` por `OrthogonalWorldMap` mediante `next/dynamic` y `ssr: false`. Usa `Canvas`, `OrthographicCamera`, `d3-geo`, `ExtrudeGeometry` y `Edges`. El click en un país hace pan suave hacia su centro y actualiza `hotelSearchArea`.
+- **Escena actual:** `DestinationScene` es CSS/DOM con perspectiva; sirve para validar jerarquía y flujo, pero no debe considerarse una escena 2.5D terminada. `TravelWorldScene` sí comparte un único `Canvas` para Globo y habitación mediante dos cámaras `View`; la segunda vista ya está preparada como cabina flotante con vehículo, tablero de corcho, pasaporte y sellos iniciales.
+- **Búsqueda actual:** filtrado local de `MOCK_HOTELS` adaptado con `adaptPostmanHotelsResponse`. El resultado hotelero muestra categoría, zona, tarifa recomendada, alternativas progresivas, régimen, cancelación, pago y precio EUR.
+
+### Flujo mínimo de pre-reserva
+
+1. `Simular búsqueda Mallorca`: autocompleta Majorca/PMI, fechas simuladas y ocupación.
+2. `Ver detalle`: el usuario acepta la tarifa recomendada o expande alternativas, y abre `DestinationBottomDrawer` con la tarifa elegida.
+3. `Pre-reserva enviada al agente`: emite `travel-request` con `rateKey`, habitación, régimen y precio; la pantalla de confirmación ofrece WhatsApp prellenado.
+
+No presentar vuelos, cenas, helicópteros, guías exclusivos ni un itinerario de varios días como parte de esta búsqueda hotelera. Son extras futuros y deben ser opt-in después de que el agente confirme la estancia.
 
 ## 5. Decisión técnica recomendada
 
@@ -195,19 +221,25 @@ El backend entrega contenido/configuración; la UI decide la representación. Si
 
 - Leer `AGENTS.md` antes de modificar Next.js. Esta versión puede diferir de documentación conocida; consultar `node_modules/next/dist/docs/` cuando el cambio afecte APIs o estructura.
 - Mantener Server Components por defecto; usar `"use client"` solo donde exista estado, evento, browser API o animación interactiva.
+- Mantener el estado de selección de vista en `Hero`; las vistas hermanas reciben datos y callbacks, no se comunican entre sí mediante estado global. `TravelSearch` controla su formulario y devuelve únicamente el `Destination` seleccionado.
+- No desmontar Search al abrir el drawer: ocultarlo preserva la búsqueda actual y permite volver al mismo punto del flujo.
+- `SiteNav` y `MobileBottomNav` envían las mismas intenciones semánticas a `Hero`; `ViewModeSelector` y el bottom nav se sincronizan mediante `exploration-navigation` y `exploration-view-change`. `Destinos` equivale a `Mapa`, `Explorar` equivale a `Buscar` y `Pasaporte` abre la vista de badges dentro de `Hero`.
+- En modo Globo, `Hero` emite `immersive-mode-change`; `SiteNav` y `MobileBottomNav` ocultan su chrome y `ViewModeSelector` no se renderiza. `Escape` devuelve a Buscar.
+- `app/layout.tsx` restaura `aleca-theme` y `aleca-style` antes del primer paint. `SiteNav` lee esos atributos para mantener los controles sincronizados sin un cambio tardío de light/dark.
 - Conservar alias `@/*`, TypeScript estricto y la estructura actual salvo necesidad clara.
 - No crear una nueva abstracción visual si puede resolverse con tokens existentes.
 - Usar `next/image` para imágenes nuevas; evitar añadir `<img>`.
 - No añadir dependencias sin necesidad y no modificar datos mock para resolver problemas visuales.
 - Los comentarios deben explicar decisiones no obvias, no narrar operaciones triviales.
 - Validar cambios con lint y build; para UI, verificar desktop/móvil y ambos tratamientos visuales.
-- La conversión rápida usa `DestinationBottomDrawer`: resultado → itinerario → solicitud mock → WhatsApp prellenado. Sustituir el evento `travel-request` por `POST /api/travel-requests` cuando exista backend; no acoplar la UI a una base de datos.
+- Para activar actividades en pruebas, definir `HOTELBEDS_API_KEY` y `HOTELBEDS_SECRET` en `.env.local`; nunca enviarlas al cliente.
+- La conversión rápida usa `TravelSearch` → `DestinationBottomDrawer`: simulación → tarifa → pre-reserva mock → WhatsApp prellenado. Sustituir el evento `travel-request` por `POST /api/travel-requests` cuando exista backend; no acoplar la UI a una base de datos.
 - `MobileBottomNav` se oculta al bajar, reaparece al subir y ofrece una zona inferior de pulsación prolongada para recuperarla cuando queda oculta.
 
 ## 9. Plan recomendado
 
 1. Medir conversión, tiempo hasta primer resultado, abandono del drawer, FPS, LCP, CLS, memoria y peso de assets.
-2. Completar `Search` como ruta principal: formulario controlado para destino, fechas y viajeros, resumen de solicitud y un CTA principal.
+2. Conservar `Search` como ruta principal: formulario controlado para destino, fechas y viajeros, simulación visible de Hotelbeds y CTA de pre-reserva sin itinerario impuesto.
 3. Sustituir `travel-request` mock por `POST /api/travel-requests` con validación de schema y persistencia; conservar WhatsApp como salida secundaria.
 4. Crear una única escena luxury piloto con R3F/Drei: personaje low-poly, un landmark, tres POI y transición de cámara hacia el cuaderno.
 5. Crear una única región map low-end con cámara ortográfica, tres landmarks y controles táctiles; medir en un teléfono real de gama media.
@@ -218,6 +250,8 @@ El backend entrega contenido/configuración; la UI decide la representación. Si
 
 - Desktop y viewport móvil real/emulado.
 - Search funciona sin montar ningún renderer 3D.
+- El test unitario de Search vive junto al componente en `components/travel-search.test.tsx`; Jest lo descubre con `jest.config.ts` y se ejecuta con `npm test`.
+- El mapa R3F se valida con `npm run build` y manualmente en navegador, incluyendo carga GeoJSON, hover, click y pan ortográfico.
 - Map mantiene selección, región y retorno al destino.
 - Globe muestra advertencia, permite opt-in y conserva fallback.
 - La escena no impide cerrar, volver o abrir el cuaderno.

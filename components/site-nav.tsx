@@ -2,40 +2,61 @@
 
 import { Compass, Globe2, Map, Moon, Sparkles, Sun } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 const LINKS = [
-  { label: "Destinos", href: "#destinos" },
-  { label: "Mi Pasaporte", href: "#pasaporte" },
-  { label: "Club VIP", href: "#vip" },
+  { label: "Destinos", view: "map" },
+  { label: "Mi Pasaporte", view: "passport" },
 ];
 
+type VisualStyle = "atlas" | "globe";
+type Theme = "light" | "dark";
+
+const subscribeToPreference = (onStoreChange: () => void) => {
+  window.addEventListener("visual-preference-change", onStoreChange);
+  return () => window.removeEventListener("visual-preference-change", onStoreChange);
+};
+
+const getVisualStyle = (): VisualStyle => document.documentElement.dataset.visualStyle === "globe" ? "globe" : "atlas";
+const getTheme = (): Theme => document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+const emitPreferenceChange = () => window.dispatchEvent(new Event("visual-preference-change"));
+
 export function SiteNav() {
-  const [style, setStyle] = useState<"atlas" | "globe">("atlas");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const style = useSyncExternalStore(subscribeToPreference, getVisualStyle, () => "atlas");
+  const theme = useSyncExternalStore(subscribeToPreference, getTheme, () => "light");
+  const [isImmersive, setIsImmersive] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
     const savedStyle = window.localStorage.getItem("aleca-style") as "atlas" | "globe" | null;
     const savedTheme = window.localStorage.getItem("aleca-theme") as "light" | "dark" | null;
-    const nextStyle = savedStyle ?? "atlas";
-    const nextTheme = savedTheme ?? "light";
+    const nextStyle = savedStyle === "globe" ? "globe" : "atlas";
+    const nextTheme = savedTheme === "dark" ? "dark" : "light";
     root.dataset.visualStyle = nextStyle;
     root.dataset.theme = nextTheme;
+    emitPreferenceChange();
+  }, []);
+
+  useEffect(() => {
+    const handleImmersiveMode = (event: Event) => {
+      setIsImmersive((event as CustomEvent<{ active: boolean }>).detail.active);
+    };
+    window.addEventListener("immersive-mode-change", handleImmersiveMode);
+    return () => window.removeEventListener("immersive-mode-change", handleImmersiveMode);
   }, []);
 
   const changeStyle = (nextStyle: "atlas" | "globe") => {
-    setStyle(nextStyle);
     document.documentElement.dataset.visualStyle = nextStyle;
     window.localStorage.setItem("aleca-style", nextStyle);
     window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: { style: nextStyle } }));
+    emitPreferenceChange();
   };
 
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
     window.localStorage.setItem("aleca-theme", nextTheme);
+    emitPreferenceChange();
   };
 
   return (
@@ -43,7 +64,7 @@ export function SiteNav() {
       initial={{ y: -24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed inset-x-0 top-4 z-50 px-4"
+      className={`fixed inset-x-0 top-4 z-50 px-4 transition-opacity ${isImmersive ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <nav className="glass mx-auto flex max-w-6xl items-center justify-between rounded-full py-2.5 pl-5 pr-2.5">
         <a href="#" className="flex items-center gap-2">
@@ -56,13 +77,14 @@ export function SiteNav() {
         {/* Desktop Links */}
         <div className="hidden items-center gap-1 lg:flex">
           {LINKS.map((link) => (
-            <a
+            <button
               key={link.label}
-              href={link.href}
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("exploration-navigation", { detail: { view: link.view } }))}
               className="rounded-full px-4 py-2 text-sm text-zinc-200 transition-colors hover:bg-white/5 hover:text-white"
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </div>
 

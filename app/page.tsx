@@ -1,18 +1,6 @@
 import { SiteNav } from "@/components/site-nav";
 import { Hero } from "@/components/hero";
-import { PassportSection } from "@/components/passport-section";
-import { UserDashboard } from "@/components/dashboard/UserDashboard"; // Adjust path if needed
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav"; // Adjust path if needed
-
-// Mock User Data for the Dashboard
-const mockUser = {
-  id: "1",
-  name: "Max Traveler.",
-  role: "CLIENT" as const,
-  points: 2400,
-  passportStamps: ["asia", "caribe", "europa"],
-  email: "aa@bb.cc"
-};
 
 export default function Home() {
   return (
@@ -22,14 +10,6 @@ export default function Home() {
       <main className="flex-1">
         <div id="destinos">
           <Hero />
-        </div>
-        
-        <div id="pasaporte">
-          <PassportSection />
-        </div>
-
-        <div id="vip">
-          <UserDashboard user={mockUser} />
         </div>
       </main>
 

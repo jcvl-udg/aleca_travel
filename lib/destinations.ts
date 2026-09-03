@@ -16,7 +16,106 @@ export type Destination = {
   vibe: string;
   duration: string;
   bestFor: string;
+  hotelDetails?: HotelDetails;
 };
+
+import type { HotelbedsRawHotel, HotelbedsRawResponse, HotelbedsRate } from "./hotelbeds-types";
+
+export type HotelRateOption = {
+  roomCode: string;
+  roomName: string;
+  rateKey: string;
+  rateClass: string;
+  boardName: string;
+  paymentType: string;
+  net: number;
+  sellingRate: number;
+  cancellationLabel: string;
+  cancellationDate?: string;
+};
+
+export type HotelDetails = {
+  destinationCode?: string;
+  categoryCode: string;
+  categoryName: string;
+  zoneName: string;
+  destinationName: string;
+  currency: string;
+  rates: HotelRateOption[];
+};
+
+const HOTEL_IMAGES: Record<string, string> = {
+  "6930": "/destinations/bali.png",
+  "1803": "/destinations/cancun.png",
+  "3219": "/destinations/paris.png",
+};
+
+const parseAmount = (value: string | undefined): number => {
+  const amount = Number.parseFloat(value ?? "");
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const formatCancellationDate = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+};
+
+const mapRate = (roomCode: string, roomName: string, rate: HotelbedsRate): HotelRateOption => {
+  const cancellationDate = formatCancellationDate(rate.cancellationPolicies?.[0]?.from);
+  const isNonRefundable = rate.rateClass.toUpperCase() === "NRF";
+  return {
+    roomCode,
+    roomName,
+    rateKey: rate.rateKey,
+    rateClass: rate.rateClass,
+    boardName: rate.boardName,
+    paymentType: rate.paymentType ?? "AT_WEB",
+    net: parseAmount(rate.net),
+    sellingRate: parseAmount(rate.sellingRate ?? rate.net),
+    cancellationLabel: isNonRefundable ? "No reembolsable" : "Cancelación gratuita",
+    cancellationDate,
+  };
+};
+
+export function mapHotelToDestination(hotel: HotelbedsRawHotel): Destination {
+  const rates = hotel.rooms.flatMap((room) => room.rates.map((rate) => mapRate(room.code, room.name, rate)));
+  const firstRate = rates[0];
+  const categoryNumber = Number.parseInt(hotel.categoryCode?.match(/\d+/)?.[0] ?? "4", 10);
+  const rating = Math.min(5, Math.max(3.5, categoryNumber + (hotel.categoryCode?.includes("LUX") ? 0.8 : 0.3)));
+
+  return {
+    id: String(hotel.code),
+    name: hotel.name.trim(),
+    country: "España",
+    lat: parseAmount(hotel.latitude),
+    lng: parseAmount(hotel.longitude),
+    status: "target",
+    rating,
+    price: firstRate?.sellingRate ?? parseAmount(hotel.minRate),
+    points: Math.round(rating * 100),
+    image: HOTEL_IMAGES[String(hotel.code)] ?? "/destinations/cancun.png",
+    blurb: `${hotel.categoryName} en ${hotel.zoneName ?? hotel.destinationName}.` ,
+    landmark: hotel.zoneName ?? hotel.destinationName,
+    vibe: "estancia mediterránea",
+    duration: "1 noche",
+    bestFor: "descanso y golf",
+    hotelDetails: {
+      destinationCode: hotel.destinationCode,
+      categoryCode: hotel.categoryCode ?? "",
+      categoryName: hotel.categoryName,
+      zoneName: hotel.zoneName ?? hotel.destinationName,
+      destinationName: hotel.destinationName,
+      currency: hotel.currency ?? "EUR",
+      rates,
+    },
+  };
+}
+
+export function adaptPostmanHotelsResponse(response: HotelbedsRawResponse): Destination[] {
+  return (response.hotels?.hotels ?? []).map(mapHotelToDestination);
+}
 
 // User's origin city (Ciudad de México) — arcs originate here.
 export const ORIGIN = { name: "Ciudad de México", lat: 19.4326, lng: -99.1332 };

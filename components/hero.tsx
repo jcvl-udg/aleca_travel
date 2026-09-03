@@ -1,23 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { TravelWorldScene } from "./travel-world-scene";
-import { TravelMap } from "./travel-map";
-import { TravelSearch } from "./travel-search";
 import { ViewModeSelector, type ExplorationView } from "./view-mode-selector";
 import { DestinationBottomDrawer } from "./pdp/DestinationBottomDrawer";
+import { PassportSection } from "./passport-section";
 import { DESTINATIONS, type Destination } from "@/lib/destinations";
 import { useGlobeCapability } from "@/hooks/use-globe-capability";
+import { useTravelStore } from "@/store/useTravelStore";
+
+const OrthogonalWorldMap = dynamic(() => import("./OrthogonalWorldMap").then((module) => module.OrthogonalWorldMap), { ssr: false });
+const TravelSearch = dynamic(() => import("./travel-search").then((module) => module.TravelSearch), { ssr: false });
+const TravelWorldScene = dynamic(() => import("./travel-world-scene").then((module) => module.TravelWorldScene), { ssr: false });
 
 export function Hero() {
-  const [view, setView] = useState<ExplorationView>("search");
-  const [selected, setSelected] = useState<Destination | null>(null);
+  const view = useTravelStore((state) => state.view);
+  const selected = useTravelStore((state) => state.selectedDestination);
+  const setView = useTravelStore((state) => state.setView);
+  const selectDestination = useTravelStore((state) => state.selectDestination);
+  const clearSelection = useTravelStore((state) => state.clearSelection);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showGlobeWarning, setShowGlobeWarning] = useState(false);
   const [globeOverride, setGlobeOverride] = useState(false);
   const [globeWarningSeen, setGlobeWarningSeen] = useState(false);
+  const [section, setSection] = useState<"explore" | "passport">("explore");
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const globeCapability = useGlobeCapability();
 
   useEffect(() => {
@@ -26,16 +35,22 @@ export function Hero() {
   
   const visibleDestinations = DESTINATIONS;
 
-  const handleDestinationSelect = (destination: Destination) => {
-    setSelected(destination);
-  };
+  const handleDestinationSelect = (destination: Destination) => selectDestination(destination);
 
   const openDestinationDetails = () => setIsDrawerOpen(true);
 
-  const handleCloseFocus = () => {
+  const handleCloseFocus = useCallback(() => {
     setIsDrawerOpen(false);
-    setTimeout(() => setSelected(null), 300);
-  };
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      clearSelection();
+      closeTimer.current = null;
+    }, 300);
+  }, [clearSelection]);
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
 
   const handleNextPrev = (direction: 1 | -1) => {
     if (!selected || visibleDestinations.length === 0) return;
@@ -54,7 +69,7 @@ export function Hero() {
     };
     window.addEventListener("wheel", handleWheel);
     return () => window.removeEventListener("wheel", handleWheel);
-  }, [selected, isDrawerOpen]);
+  }, [handleCloseFocus, isDrawerOpen, selected]);
 
   useEffect(() => {
     if (!selected) return;
@@ -74,9 +89,18 @@ export function Hero() {
     window.dispatchEvent(new CustomEvent("destination-drawer", { detail: { open: isDrawerOpen } }));
   }, [isDrawerOpen]);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("exploration-view-change", { detail: { view: section === "passport" ? "passport" : view } }));
+  }, [section, view]);
+
   const activeView = globeCapability.ready && !globeCapability.capable && view === "globe" && !globeOverride ? "search" : view;
 
-  const requestViewChange = (nextView: ExplorationView) => {
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("immersive-mode-change", { detail: { active: section === "explore" && activeView === "globe" } }));
+  }, [activeView, section]);
+
+  const requestViewChange = useCallback((nextView: ExplorationView) => {
+    setSection("explore");
     if (nextView === "globe" && !globeWarningSeen) {
       setShowGlobeWarning(true);
       return;
@@ -84,13 +108,37 @@ export function Hero() {
     setView(nextView);
     if (nextView === "globe" && globeCapability.ready && !globeCapability.capable) setGlobeOverride(true);
     if (nextView !== "globe") setGlobeOverride(false);
-  };
+  }, [globeCapability.capable, globeCapability.ready, globeWarningSeen, setView]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && section === "explore" && activeView === "globe") requestViewChange("search");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeView, requestViewChange, section]);
+
+  useEffect(() => {
+    const handleNavigation = (event: Event) => {
+      const nextView = (event as CustomEvent<{ view: "search" | "map" | "globe" | "passport" }>).detail.view;
+      if (nextView === "passport") {
+        clearSelection();
+        setIsDrawerOpen(false);
+        setSection("passport");
+        return;
+      }
+      setSection("explore");
+      requestViewChange(nextView);
+    };
+    window.addEventListener("exploration-navigation", handleNavigation);
+    return () => window.removeEventListener("exploration-navigation", handleNavigation);
+  }, [clearSelection, requestViewChange]);
 
   return (
-    <section className={`relative min-h-[100dvh] w-full overflow-hidden bg-background ${
-      selected ? "relative z-30 min-h-[100dvh]" : ""
+    <section className={`relative min-h-dvh w-full overflow-hidden bg-background ${
+      selected ? "relative z-30 min-h-dvh" : ""
     }`}>
-      {!selected && (
+      {section === "explore" && !selected && (
         <div className="absolute inset-x-0 top-0 z-30 flex justify-center px-4 pt-24 lg:pt-28">
           <ViewModeSelector
             value={view}
@@ -103,7 +151,7 @@ export function Hero() {
 
       <AnimatePresence>
         {showGlobeWarning && !selected && (
-          <motion.div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className="fixed inset-0 z-60 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="glass-strong w-full max-w-md p-6" initial={{ y: 18, scale: 0.97 }} animate={{ y: 0, scale: 1 }}>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Experiencia experimental</p>
               <h2 className="mt-2 font-serif text-3xl">El globo puede ir más lento</h2>
@@ -117,15 +165,21 @@ export function Hero() {
         )}
       </AnimatePresence>
 
-      {activeView === "map" && !selected && (
-        <TravelMap onSelect={handleDestinationSelect} onOpenDetails={openDestinationDetails} />
+      {section === "passport" && !selected && <PassportSection />}
+
+      {section === "explore" && activeView === "map" && (
+        <div className={selected ? "hidden" : undefined}>
+          <OrthogonalWorldMap onSelect={handleDestinationSelect} onOpenDetails={openDestinationDetails} />
+        </div>
       )}
 
-      {activeView === "search" && !selected && (
-        <TravelSearch onSelect={handleDestinationSelect} onOpenDetails={openDestinationDetails} />
+      {section === "explore" && activeView === "search" && (
+        <div className={selected ? "hidden" : undefined}>
+          <TravelSearch onSelect={handleDestinationSelect} onOpenDetails={openDestinationDetails} />
+        </div>
       )}
 
-      {activeView === "globe" && (
+      {section === "explore" && activeView === "globe" && (
       <>
       {/* LAYER 0: CINEMATIC BACKGROUND VIDEO */}
       <AnimatePresence>
@@ -148,7 +202,7 @@ export function Hero() {
               className="absolute inset-0 h-full w-full object-cover opacity-45 lg:opacity-60"
               src="https://cdn.coverr.co/videos/coverr-drone-shot-over-a-tropical-beach-4318/1080p.mp4" 
             />
-            <div className="absolute inset-0 z-10 bg-gradient-to-t from-background/65 via-background/30 to-transparent lg:bg-gradient-to-r lg:from-background/65 lg:via-background/30 lg:to-transparent" />
+            <div className="absolute inset-0 z-10 bg-linear-to-t from-background/65 via-background/30 to-transparent lg:bg-linear-to-r lg:from-background/65 lg:via-background/30 lg:to-transparent" />
             <motion.div 
               initial={{ opacity: 0.8 }}
               animate={{ opacity: 0 }}
@@ -161,7 +215,7 @@ export function Hero() {
       </>
       )}
 
-      {activeView === "globe" && (
+      {section === "explore" && activeView === "globe" && (
       <>
       {/* LAYER 1: THE GLOBE CANVAS */}
       <motion.div
@@ -186,7 +240,7 @@ export function Hero() {
 
       {/* Focus Nav Arrows */}
       <AnimatePresence>
-        {selected && activeView === "globe" && (
+        {selected && section === "explore" && activeView === "globe" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pointer-events-none absolute inset-0 z-30 hidden lg:block">
             <div className="absolute inset-y-0 left-4 right-4 flex items-center justify-between lg:left-8 lg:right-8">
               <button onClick={() => handleNextPrev(-1)} className="pointer-events-auto glass flex h-12 w-12 items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:bg-white/10 hover:text-primary"><ChevronLeft className="h-6 w-6" /></button>
@@ -201,7 +255,7 @@ export function Hero() {
         {isDrawerOpen && selected && (
           <DestinationBottomDrawer
             destination={selected}
-            onClose={() => setIsDrawerOpen(false)}
+            onClose={handleCloseFocus}
           />
         )}
       </AnimatePresence>
