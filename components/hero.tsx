@@ -149,7 +149,7 @@ export function Hero() {
         </div>
       )}
 
-      <AnimatePresence>
+      {/* <AnimatePresence>
         {showGlobeWarning && !selected && (
           <motion.div className="fixed inset-0 z-60 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="glass-strong w-full max-w-md p-6" initial={{ y: 18, scale: 0.97 }} animate={{ y: 0, scale: 1 }}>
@@ -163,13 +163,13 @@ export function Hero() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       {section === "passport" && !selected && <PassportSection />}
 
       {section === "explore" && activeView === "map" && (
         <div className={selected ? "hidden" : undefined}>
-          <OrthogonalWorldMap onSelect={handleDestinationSelect} onOpenDetails={openDestinationDetails} />
+          <OrthogonalWorldMap />
         </div>
       )}
 

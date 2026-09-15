@@ -15,7 +15,7 @@ type Props = {
 const OPTIONS: { value: ExplorationView; label: string; detail: string; icon: typeof Compass }[] = [
   { value: "search", label: "Buscar", detail: "rápido", icon: Search },
   { value: "map", label: "Mapa", detail: "2.5D", icon: Map },
-  { value: "globe", label: "Globo", detail: "3D", icon: Compass },
+  // { value: "globe", label: "Globo", detail: "3D", icon: Compass },
 ];
 
 export function ViewModeSelector({ value, onChange, cautionViews = [], cautionReason }: Props) {
