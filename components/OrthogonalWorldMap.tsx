@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, OrthographicCamera } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import { geoEqualEarth, type GeoProjection } from "d3-geo";
 import { useMemo, useEffect, useState } from "react";
@@ -17,14 +17,19 @@ export interface GeoJSONFeature {
 
 function CountryMesh({ 
   feature, 
-  projection, 
+  projection,
+  isSelected,
   onSelect 
 }: { 
   feature: GeoJSONFeature; 
   projection: GeoProjection;
+  isSelected: boolean;
   onSelect: (name: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+
+  // Aumentamos un poco la profundidad para que el efecto lateral sea obvio
+  const EXTRUDE_DEPTH = isSelected ? 2.5 : 0.8;
 
   const { shapeGeometry, lines } = useMemo(() => {
     if (!feature.geometry || !feature.geometry.coordinates) return {};
@@ -35,7 +40,7 @@ function CountryMesh({
       : [feature.geometry.coordinates]) as number[][][][];
     
     const shapes: THREE.Shape[] = [];
-    const countryLines: THREE.Line[] = []; // Arreglo para guardar múltiples líneas
+    const countryLines: THREE.Line[] = [];
 
     polygons.forEach((polygon) => {
       const outerRing = polygon[0]; 
@@ -52,7 +57,8 @@ function CountryMesh({
           const x = point[0];
           const y = -point[1];
 
-          ringPoints.push(new THREE.Vector3(x, y, 0.01));
+          // Subimos la línea justo encima de la extrusión
+          ringPoints.push(new THREE.Vector3(x, y, EXTRUDE_DEPTH + 0.05));
 
           if (!hasValidPoints) {
             shape.moveTo(x, y);
@@ -63,23 +69,29 @@ function CountryMesh({
         }
       });
 
-      if (hasValidPoints) {
-        shapes.push(shape);
-      }
+      if (hasValidPoints) shapes.push(shape);
 
-      // Creamos una línea INDEPENDIENTE por cada anillo (isla/polígono)
-      // Así evitamos las líneas raras que cruzan el océano
       if (ringPoints.length > 1) {
         const lineGeom = new THREE.BufferGeometry().setFromPoints(ringPoints);
-        // Líneas sutiles que solo marcan fronteras suavemente
-        const lineMat = new THREE.LineBasicMaterial({ color: "#a3886e", opacity: 0.3, transparent: true });
+        // Línea más clara para que resalte sobre el modelo
+        const lineMat = new THREE.LineBasicMaterial({ color: "#ffffff", opacity: 0.3, transparent: true });
         countryLines.push(new THREE.Line(lineGeom, lineMat));
       }
     });
 
-    const shapeGeom = shapes.length > 0 ? new THREE.ShapeGeometry(shapes) : null;
+    // Añadimos un pequeño bisel (bevel) para que los bordes atrapen la luz
+    const extrudeSettings = {
+      depth: EXTRUDE_DEPTH,
+      bevelEnabled: true, 
+      bevelSegments: 1,
+      steps: 1,
+      bevelSize: 0.05,
+      bevelThickness: 0.05
+    };
+    
+    const shapeGeom = shapes.length > 0 ? new THREE.ExtrudeGeometry(shapes, extrudeSettings) : null;
     return { shapeGeometry: shapeGeom, lines: countryLines };
-  }, [feature, projection]);
+  }, [feature, projection, EXTRUDE_DEPTH]);
 
   if (!shapeGeometry) return null;
 
@@ -87,6 +99,8 @@ function CountryMesh({
     <group>
       <mesh 
         geometry={shapeGeometry}
+        castShadow // Importante para que el volumen proyecte sombra
+        receiveShadow
         onPointerOver={(e) => {
           e.stopPropagation();
           setHovered(true);
@@ -99,17 +113,17 @@ function CountryMesh({
         }}
         onClick={(e) => {
           e.stopPropagation();
-          const name = String(feature.properties?.ADMIN || feature.properties?.name || "País desconocido");
+          const name = String(feature.properties?.ADMIN || feature.properties?.name || "Desconocido");
           onSelect(name);
         }}
       >
-        <meshBasicMaterial 
-          color={hovered ? "#e6ccb2" : "#c2a688"} 
-          side={THREE.DoubleSide} 
+        <meshStandardMaterial 
+          color={isSelected ? "#ff7e67" : hovered ? "#f2d3b3" : "#d4a373"} 
+          roughness={0.4} // Menos rugosidad para que parezca material premium (como cerámica)
+          metalness={0.1}
         />
       </mesh>
       
-      {/* Renderizamos todas las líneas correctas del país */}
       {lines && lines.map((lineObj, idx) => (
         <primitive key={idx} object={lineObj} />
       ))}
@@ -117,7 +131,7 @@ function CountryMesh({
   );
 }
 
-function TestWorld({ features, onSelectCountry }: { features: GeoJSONFeature[], onSelectCountry: (name: string) => void }) {
+function ExtrudedWorld({ features, selectedCountry, onSelectCountry }: { features: GeoJSONFeature[], selectedCountry: string, onSelectCountry: (name: string) => void }) {
   const MAP_WIDTH = 30;
   const MAP_HEIGHT = 15;
 
@@ -128,20 +142,30 @@ function TestWorld({ features, onSelectCountry }: { features: GeoJSONFeature[], 
   }, [features]);
 
   return (
-    <group position={[-MAP_WIDTH / 2, MAP_HEIGHT / 2, 0]}>
-      <mesh position={[MAP_WIDTH / 2, -MAP_HEIGHT / 2, -0.1]}>
-        <planeGeometry args={[MAP_WIDTH * 1.1, MAP_HEIGHT * 1.1]} />
-        <meshBasicMaterial color="#a8d5e5" />
-      </mesh>
+    // MAGIA DE UX: Rotamos TODO el grupo -90 grados en el eje X
+    // Esto hace que el mapa quede "acostado" como una mesa, y la extrusión crezca hacia ARRIBA.
+    <group rotation={[-Math.PI / 2, 0, 0]}>
+      <group position={[-MAP_WIDTH / 2, MAP_HEIGHT / 2, 0]}>
+        
+        {/* Base del mapa (Océano/Mesa) */}
+        <mesh position={[MAP_WIDTH / 2, -MAP_HEIGHT / 2, -0.2]} receiveShadow>
+          <planeGeometry args={[MAP_WIDTH * 1.5, MAP_HEIGHT * 1.5]} />
+          <meshStandardMaterial color="#8ab5c2" roughness={0.9} />
+        </mesh>
 
-      {features.map((feature, i) => (
-        <CountryMesh 
-          key={i} 
-          feature={feature} 
-          projection={projection} 
-          onSelect={onSelectCountry}
-        />
-      ))}
+        {features.map((feature, i) => {
+          const countryName = String(feature.properties?.ADMIN || feature.properties?.name || "");
+          return (
+            <CountryMesh 
+              key={i} 
+              feature={feature} 
+              projection={projection}
+              isSelected={selectedCountry === countryName}
+              onSelect={onSelectCountry}
+            />
+          )
+        })}
+      </group>
     </group>
   );
 }
@@ -149,7 +173,7 @@ function TestWorld({ features, onSelectCountry }: { features: GeoJSONFeature[], 
 export function OrthogonalWorldMap() {
   const [countries, setCountries] = useState<GeoJSONFeature[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCountry, setSelectedCountry] = useState<string>("Toca un país");
+  const [selectedCountry, setSelectedCountry] = useState<string>("Toca un destino");
 
   useEffect(() => {
     fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
@@ -165,39 +189,70 @@ export function OrthogonalWorldMap() {
   }, []);
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-[#f4efe8] p-4 sm:p-10">
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-[#eae4db] p-4 sm:p-10">
       
-      <div className="mb-4 flex flex-col items-center">
+      <div className="mb-4 flex flex-col items-center z-10">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-800 text-center">
-          Mapa del Mundo Interactivo
+          Rutas de Viaje
         </h1>
-        <div className="mt-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-md">
+        <div className="mt-2 rounded-full bg-white px-6 py-2 text-md font-semibold text-[#ff7e67] shadow-md transition-all duration-300">
           {selectedCountry}
         </div>
       </div>
       
-      {/* touch-none es CLAVE aquí para que en móvil no intente hacer scroll la pantalla entera */}
-      <div className="relative h-[60vh] w-full max-w-4xl overflow-hidden rounded-xl border-2 border-dashed border-gray-400 bg-white shadow-lg touch-none">
-        <Canvas>
-          <OrthographicCamera makeDefault position={[0, 0, 50]} zoom={25} />
+      <div className="relative h-[65vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-b from-[#e3edf0] to-[#c2dce6] shadow-2xl touch-none">
+        
+        {/* Activamos shadows en el Canvas */}
+        <Canvas shadows>
+          
+          {/* Cambiamos a PerspectiveCamera, posicionada alta y en diagonal */}
+          <PerspectiveCamera makeDefault position={[0, 25, 30]} fov={40} />
+          
+          {/* Iluminación dramática para resaltar bordes y extrusiones */}
+          <ambientLight intensity={0.4} />
+          <directionalLight 
+            position={[15, 30, 15]} 
+            intensity={1.2} 
+            castShadow 
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-far={100}
+            shadow-camera-left={-20}
+            shadow-camera-right={20}
+            shadow-camera-top={20}
+            shadow-camera-bottom={-20}
+          />
+          <directionalLight position={[-15, 10, -15]} intensity={0.5} />
           
           {!loading && countries.length > 0 && (
-             <TestWorld features={countries} onSelectCountry={setSelectedCountry} />
+             <ExtrudedWorld 
+               features={countries} 
+               selectedCountry={selectedCountry}
+               onSelectCountry={setSelectedCountry} 
+             />
           )}
           
-          {/* enableDamping={true} hace que arrastrar el mapa se sienta muy fluido en móviles */}
+          {/* Controles optimizados para la vista "mesa" */}
           <OrbitControls 
-            enableRotate={false} 
-            enablePan={true} 
+            target={[0, 0, 0]} // La cámara siempre mira al centro de la mesa
+            enableRotate={true} 
+            maxPolarAngle={Math.PI / 2 - 0.1} // Bloquea ir por debajo de la mesa
+            minPolarAngle={0.2} // Impide vista totalmente desde arriba (arruina el 3D)
+            enablePan={false} // Desactivado para que en móviles no arrastren el mapa fuera de pantalla
             enableZoom={true} 
+            minDistance={15}
+            maxDistance={50}
             enableDamping={true} 
             dampingFactor={0.05}
           />
         </Canvas>
 
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm">
-            <p className="font-semibold text-blue-600 text-lg">Cargando países...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-md">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-10 w-10 rounded-full border-4 border-[#ff7e67] border-t-transparent animate-spin mb-4"></div>
+              <p className="font-semibold text-gray-700 text-lg">Trazando el mundo...</p>
+            </div>
           </div>
         )}
       </div>
