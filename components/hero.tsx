@@ -11,7 +11,10 @@ import { DESTINATIONS, type Destination } from "@/lib/destinations";
 import { useGlobeCapability } from "@/hooks/use-globe-capability";
 import { useTravelStore } from "@/store/useTravelStore";
 
-const OrthogonalWorldMap = dynamic(() => import("./OrthogonalWorldMap").then((module) => module.OrthogonalWorldMap), { ssr: false });
+const OrthogonalWorldMap = dynamic(
+  () => import("@/components/OrthogonalWorldMap"), // Cambia la ruta según tu estructura
+  { ssr: false }
+);
 const TravelSearch = dynamic(() => import("./travel-search").then((module) => module.TravelSearch), { ssr: false });
 const TravelWorldScene = dynamic(() => import("./travel-world-scene").then((module) => module.TravelWorldScene), { ssr: false });
 
